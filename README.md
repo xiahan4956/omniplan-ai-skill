@@ -1,90 +1,73 @@
-# omniplan-mcp
+# omniplan-ai-skill
 
-MCP server for [OmniPlan 4](https://www.omnigroup.com/omniplan) on macOS. Manage your project tasks with natural language via Claude or any MCP-compatible client.
+Single-entry OmniPlan automation skill using a Python CLI.
 
 ## Requirements
 
 - macOS
-- OmniPlan 4 (must be running)
+- OmniPlan 4 (running with at least one open document)
 - Python 3.11+
-- Automation permission granted to your terminal / MCP host app
+- Automation permission for your terminal app
 
-## Installation
-
-```bash
-pip install git+https://github.com/xiahan4956/omniplan-mcp.git
-```
-
-Or clone and install in editable mode:
+## Install
 
 ```bash
-git clone https://github.com/xiahan4956/omniplan-mcp.git
-cd omniplan-mcp
+git clone git@github.com:xiahan4956/omniplan-ai-skill.git
+cd omniplan-ai-skill
 pip install -e .
 ```
 
-### Grant Automation Permission
+## CLI Entry
 
-The first time you run the server, macOS may prompt for Automation access. If not, grant it manually:
-
-**System Settings → Privacy & Security → Automation** — enable OmniPlan for your terminal or the app running the MCP server.
-
-## Claude Desktop Configuration
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "omniplan": {
-      "command": "python3",
-      "args": ["-m", "omniplan_mcp"]
-    }
-  }
-}
+```bash
+python -m omniplan_mcp --help
 ```
 
-Then restart Claude Desktop.
+or
 
-## Tools
+```bash
+omniplan-skill --help
+```
 
-| Tool | Description |
-|------|-------------|
-| `list_documents` | List all currently open OmniPlan documents |
-| `query_tasks` | Search and filter tasks by keyword, type, completion, color, or date range |
-| `get_task` | Get full details of a task by ID |
-| `create_task` | Create a new task under a parent task or project root |
-| `update_task` | Update task fields (title, note, dates, completion, color) |
-| `delete_task` | Delete a task by ID |
+## Commands
 
-All tools accept an optional `document_name` parameter. If omitted, the frontmost open document is used.
+List documents:
 
-### query_tasks parameters
+```bash
+omniplan-skill documents list
+```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `keyword` | string | Filter by title or note (case-insensitive) |
-| `task_type` | string | `task` / `group` / `milestone` / `hammock` |
-| `completed` | boolean | `true` = completed only, `false` = incomplete only |
-| `color` | string | `red` / `orange` / `yellow` / `green` / `blue` / `purple` / `brown` / `gray` / `clear` |
-| `due_before` | string | ISO date, e.g. `2025-12-31` |
-| `due_after` | string | ISO date, e.g. `2025-01-01` |
-| `limit` | int | Max results (default 50) |
+Query tasks:
 
-### update_task parameters
+```bash
+omniplan-skill tasks query --keyword release --completed false --detail full
+```
 
-Pass only the fields you want to change. Set `completed: true` to mark a task done, or `color: "clear"` to reset the bar color.
+Get task by id:
 
-## Example Prompts
+```bash
+omniplan-skill tasks get <task_id>
+```
 
-> "Show me all incomplete tasks due this week in my project."
+Create task:
 
-> "Create a milestone called 'Beta Launch' under the Deployment group."
+```bash
+omniplan-skill tasks create "Beta Launch" --task-type milestone --note "target this month"
+```
 
-> "Mark task 42 as complete and set its bar color to green."
+Update task:
 
-> "What tasks are assigned the red color?"
+```bash
+omniplan-skill tasks update <task_id> --title "Updated title" --completed true
+```
 
-## License
+Delete task:
 
-MIT
+```bash
+omniplan-skill tasks delete <task_id>
+```
+
+## Notes
+
+- This project no longer depends on `FastMCP` server registration.
+- Core logic remains in `documents.py`, `tasks.py`, and `jxa.py`.

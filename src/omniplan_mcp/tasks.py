@@ -1,6 +1,5 @@
 import json
 from typing import Optional
-from omniplan_mcp.server import mcp
 from omniplan_mcp.jxa import run_omnijs
 
 def _doc_selector() -> str:
@@ -79,7 +78,6 @@ function taskToObj(task, summary) {
 """
 
 
-@mcp.tool()
 async def query_tasks(
     keyword: Optional[str] = None,
     task_type: Optional[str] = None,
@@ -156,7 +154,6 @@ return sliced.map(function(p) {{
     return json.dumps(result)
 
 
-@mcp.tool()
 async def get_task(
     task_id: str,
 ) -> str:
@@ -197,7 +194,6 @@ return obj;
     return json.dumps(result)
 
 
-@mcp.tool()
 async def create_task(
     title: str,
     parent_id: Optional[str] = None,
@@ -263,7 +259,6 @@ return obj;
     return json.dumps(result)
 
 
-@mcp.tool()
 async def update_task(
     task_id: str,
     title: Optional[str] = None,
@@ -341,7 +336,6 @@ return obj;
     return json.dumps(result)
 
 
-@mcp.tool()
 async def delete_task(
     task_id: str,
 ) -> str:

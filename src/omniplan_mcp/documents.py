@@ -1,7 +1,5 @@
 import json
-from omniplan_mcp.server import mcp
 
-@mcp.tool()
 async def list_documents() -> str:
     """List all currently open OmniPlan documents.
     Note: task tools now always operate on the current front document.

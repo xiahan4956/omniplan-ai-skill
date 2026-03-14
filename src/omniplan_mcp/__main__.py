@@ -1,10 +1,5 @@
-from omniplan_mcp.server import mcp
-from omniplan_mcp import tasks, documents  # noqa: F401 - registers tools
-
-
-def main() -> None:
-    mcp.run()
+from omniplan_mcp.cli import main
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
