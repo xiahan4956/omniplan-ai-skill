@@ -23,8 +23,8 @@ def pretty(label: str, result: str):
 
 async def main():
     # 1. 查询所有任务
-    r = await query_tasks()
-    pretty("query_tasks (all)", r)
+    r = await query_tasks(detail="full")
+    pretty("query_tasks (all, detail='full')", r)
 
     tasks = json.loads(r)
     if not tasks:

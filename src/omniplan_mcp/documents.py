@@ -4,7 +4,7 @@ from omniplan_mcp.server import mcp
 @mcp.tool()
 async def list_documents() -> str:
     """List all currently open OmniPlan documents.
-    Use the returned document names as the document_name parameter in other tools.
+    Note: task tools now always operate on the current front document.
     """
     # Use JXA directly (not OmniJS bridge) since we need app-level access
     from omniplan_mcp.jxa import run_jxa
