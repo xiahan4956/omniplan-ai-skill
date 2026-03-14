@@ -1,5 +1,5 @@
 import json
-from omniplan_mcp.app import mcp
+from omniplan_mcp.server import mcp
 
 @mcp.tool()
 async def list_documents() -> str:

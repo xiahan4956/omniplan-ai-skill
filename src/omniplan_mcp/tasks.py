@@ -1,6 +1,6 @@
 import json
 from typing import Optional
-from omniplan_mcp.app import mcp
+from omniplan_mcp.server import mcp
 from omniplan_mcp.jxa import run_omnijs
 
 # Valid color names mapping to Omni Automation Color constants
