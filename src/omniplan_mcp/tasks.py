@@ -106,15 +106,15 @@ async def query_tasks(
         kw = json.dumps(keyword.lower())
         filters.append(f"(t.title || '').toLowerCase().includes({kw}) || (t.note || '').toLowerCase().includes({kw})")
     if task_type:
-        filters.append(f"String(t.type).replace('TaskType.', '') === {json.dumps(task_type)}")
+        filters.append(f"String(t.type).indexOf({json.dumps(task_type)}) !== -1")
     if completed is True:
         filters.append("(t.effortDone >= t.effort && t.effort > 0)")
     elif completed is False:
         filters.append("!(t.effortDone >= t.effort && t.effort > 0)")
     if due_before:
-        filters.append(f"t.endDate && t.endDate < new Date({json.dumps(due_before)})")
+        filters.append(f"t.endDate && t.endDate <= new Date({json.dumps(due_before + 'T23:59:59')})")
     if due_after:
-        filters.append(f"t.endDate && t.endDate > new Date({json.dumps(due_after)})")
+        filters.append(f"t.endDate && t.endDate >= new Date({json.dumps(due_after + 'T00:00:00')})")
 
     filter_expr = " && ".join(filters) if filters else "true"
 
@@ -201,6 +201,7 @@ async def create_task(
     note: Optional[str] = None,
     manual_start_date: Optional[str] = None,
     manual_end_date: Optional[str] = None,
+    sort_siblings: bool = True,
 ) -> str:
     """Create a new task in an OmniPlan document.
 
@@ -211,6 +212,7 @@ async def create_task(
         note: Optional task description.
         manual_start_date: ISO date string for manual start.
         manual_end_date: ISO date string for manual end.
+        sort_siblings: If True, sort siblings by startDate after creation.
     """
     doc_sel = _doc_selector()
     task_to_obj = _task_to_obj()
@@ -256,6 +258,8 @@ obj.outline_id = parentOutlineId ? (parentOutlineId + '.' + String(newTaskIndex)
 return obj;
 """
     result = await run_omnijs(script)
+    if sort_siblings:
+        await sort_tasks(parent_id=parent_id)
     return json.dumps(result)
 
 
@@ -266,6 +270,7 @@ async def update_task(
     completed: Optional[bool] = None,
     manual_start_date: Optional[str] = None,
     manual_end_date: Optional[str] = None,
+    sort_siblings: bool = True,
 ) -> str:
     """Update an existing task. Only provided fields are changed.
 
@@ -331,6 +336,136 @@ var obj = taskToObj(task);
 obj.parent_id = (found.parentId === _rootUID || found.parentId === null) ? null : found.parentId;
 obj.outline_id = found.outlineId || null;
 return obj;
+"""
+    result = await run_omnijs(script)
+    if sort_siblings:
+        parent_id_for_sort = result.get("parent_id") if isinstance(result, dict) else None
+        await sort_tasks(parent_id=parent_id_for_sort)
+    return json.dumps(result)
+
+
+async def sort_tasks(
+    parent_id: Optional[str] = None,
+) -> str:
+    """Sort short-duration tasks and milestones by startDate ascending.
+
+    Only sorts milestones and tasks with duration <= 2 days. Long tasks
+    and groups (with subtrees, custom colors) are left untouched.
+    Uses delete-and-recreate only for the short tasks.
+
+    Args:
+        parent_id: uniqueID of the parent whose children to sort.
+                   If omitted, sorts root-level tasks.
+    """
+    doc_sel = _doc_selector()
+    task_to_obj = _task_to_obj()
+
+    script = f"""
+{doc_sel}
+{task_to_obj}
+
+function findById(task, id) {{
+  if (String(task.uniqueID) === id) return task;
+  for (var _i = 0; _i < task.subtasks.length; _i++) {{
+    var found = findById(task.subtasks[_i], id);
+    if (found) return found;
+  }}
+  return null;
+}}
+
+var TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+
+function isSortable(task) {{
+  var typeStr = String(task.type).replace(/.*TaskType:\\s*/, '').replace('TaskType.', '').replace(']', '').trim();
+  if (typeStr === 'milestone') return true;
+  if (task.subtasks.length > 0) return false; // groups/parents stay
+  var startMs = task.startDate ? task.startDate.getTime() : null;
+  var endMs = task.endDate ? task.endDate.getTime() : null;
+  if (startMs && endMs && (endMs - startMs) <= TWO_DAYS_MS) return true;
+  return false;
+}}
+
+var parentId = {json.dumps(parent_id)};
+var parent = parentId ? findById(_proj.actual.rootTask, parentId) : _proj.actual.rootTask;
+if (parentId && !parent) throw new Error('Parent task not found: ' + parentId);
+
+var childCount = parent.subtasks.length;
+if (childCount === 0) return {{sorted: 0, message: 'No children to sort.'}};
+
+// Separate into fixed (stay in place) and sortable (milestones/short tasks)
+var fixed = []; // {{index, startMs}}
+var sortable = []; // {{snapshot, startMs}}
+for (var _i = 0; _i < childCount; _i++) {{
+  var task = parent.subtasks[_i];
+  var startMs = task.startDate ? task.startDate.getTime() : null;
+  if (isSortable(task)) {{
+    var typeStr = String(task.type).replace(/.*TaskType:\\s*/, '').replace('TaskType.', '').replace(']', '').trim();
+    sortable.push({{
+      title: task.title || '',
+      type: typeStr,
+      note: task.note || '',
+      effort: task.effort,
+      effortDone: task.effortDone,
+      manualStartMs: task.manualStartDate ? task.manualStartDate.getTime() : null,
+      manualEndMs: task.manualEndDate ? task.manualEndDate.getTime() : null,
+      startMs: startMs,
+      origIndex: _i
+    }});
+  }} else {{
+    fixed.push({{index: _i, startMs: startMs}});
+  }}
+}}
+
+if (sortable.length === 0) return {{sorted: 0, message: 'No sortable tasks found.', changed: false}};
+
+// Check if sortable tasks are already in correct chronological order BEFORE sorting
+var alreadySorted = true;
+for (var _i = 0; _i < sortable.length - 1; _i++) {{
+  var da = sortable[_i].startMs !== null ? sortable[_i].startMs : Infinity;
+  var db = sortable[_i + 1].startMs !== null ? sortable[_i + 1].startMs : Infinity;
+  if (da > db) {{ alreadySorted = false; break; }}
+}}
+// Also check they were already at the end (after all fixed tasks)
+if (alreadySorted && sortable.length > 0 && fixed.length > 0) {{
+  var lastFixedIdx = fixed[fixed.length - 1].index;
+  var firstSortableIdx = sortable[0].origIndex;
+  if (firstSortableIdx < lastFixedIdx) alreadySorted = false;
+}}
+if (alreadySorted) return {{sorted: sortable.length, message: 'Already sorted.', changed: false}};
+
+// Sort sortable tasks by startDate
+sortable.sort(function(a, b) {{
+  var da = a.startMs !== null ? a.startMs : Infinity;
+  var db = b.startMs !== null ? b.startMs : Infinity;
+  return da - db;
+}});
+
+// Delete sortable tasks (in reverse index order to avoid shifting)
+var sortableIndices = sortable.map(function(s) {{ return s.origIndex; }});
+sortableIndices.sort(function(a, b) {{ return b - a; }}); // reverse
+for (var _i = 0; _i < sortableIndices.length; _i++) {{
+  parent.subtasks[sortableIndices[_i]].remove();
+}}
+
+// Recreate sortable tasks in sorted order (appended to end)
+var created = [];
+for (var _i = 0; _i < sortable.length; _i++) {{
+  var snap = sortable[_i];
+  var t = parent.addSubtask();
+  t.title = snap.title;
+  if (snap.type === 'milestone') t.type = TaskType.milestone;
+  if (snap.effort > 0) t.effort = snap.effort;
+  if (snap.effortDone > 0) t.effortDone = snap.effortDone;
+  if (snap.manualStartMs) t.manualStartDate = new Date(snap.manualStartMs);
+  if (snap.manualEndMs) t.manualEndDate = new Date(snap.manualEndMs);
+  if (snap.note) t.note = snap.note;
+  created.push({{
+    title: t.title,
+    start_date: fmtDate(t.startDate)
+  }});
+}}
+
+return {{sorted: created.length, fixed: fixed.length, changed: true, tasks: created}};
 """
     result = await run_omnijs(script)
     return json.dumps(result)

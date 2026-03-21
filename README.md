@@ -1,6 +1,6 @@
 # omniplan-ai-skill
 
-Single-entry OmniPlan automation skill using a Python CLI.
+Single-entry OmniPlan automation skill using a local Python CLI.
 
 ## Requirements
 
@@ -9,24 +9,14 @@ Single-entry OmniPlan automation skill using a Python CLI.
 - Python 3.11+
 - Automation permission for your terminal app
 
-## Install
+## Run
+
+No installation is required.
 
 ```bash
 git clone git@github.com:xiahan4956/omniplan-ai-skill.git
 cd omniplan-ai-skill
-pip install -e .
-```
-
-## CLI Entry
-
-```bash
-python -m omniplan_mcp --help
-```
-
-or
-
-```bash
-omniplan-skill --help
+python3 scripts/omniplan_skill.py --help
 ```
 
 ## Commands
@@ -34,40 +24,41 @@ omniplan-skill --help
 List documents:
 
 ```bash
-omniplan-skill documents list
+python3 scripts/omniplan_skill.py documents list
 ```
 
 Query tasks:
 
 ```bash
-omniplan-skill tasks query --keyword release --completed false --detail full
+python3 scripts/omniplan_skill.py tasks query --keyword release --completed false --detail full
 ```
 
 Get task by id:
 
 ```bash
-omniplan-skill tasks get <task_id>
+python3 scripts/omniplan_skill.py tasks get <task_id>
 ```
 
 Create task:
 
 ```bash
-omniplan-skill tasks create "Beta Launch" --task-type milestone --note "target this month"
+python3 scripts/omniplan_skill.py tasks create "Beta Launch" --task-type milestone --note "target this month"
 ```
 
 Update task:
 
 ```bash
-omniplan-skill tasks update <task_id> --title "Updated title" --completed true
+python3 scripts/omniplan_skill.py tasks update <task_id> --title "Updated title" --completed true
 ```
 
 Delete task:
 
 ```bash
-omniplan-skill tasks delete <task_id>
+python3 scripts/omniplan_skill.py tasks delete <task_id>
 ```
 
 ## Notes
 
 - This project no longer depends on `FastMCP` server registration.
+- The recommended entrypoint is `scripts/omniplan_skill.py`, which avoids package installation.
 - Core logic remains in `documents.py`, `tasks.py`, and `jxa.py`.

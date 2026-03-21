@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from omniplan_mcp.documents import list_documents
-from omniplan_mcp.tasks import create_task, delete_task, get_task, query_tasks, update_task
+from omniplan_mcp.tasks import create_task, delete_task, get_task, query_tasks, sort_tasks, update_task
 
 
 def _print_json(result: Any) -> None:
@@ -51,6 +51,7 @@ async def _dispatch(args: argparse.Namespace) -> int:
                 note=args.note,
                 manual_start_date=args.manual_start_date,
                 manual_end_date=args.manual_end_date,
+                sort_siblings=not args.no_sort,
             )
         )
         return 0
@@ -64,8 +65,13 @@ async def _dispatch(args: argparse.Namespace) -> int:
                 completed=args.completed,
                 manual_start_date=args.manual_start_date,
                 manual_end_date=args.manual_end_date,
+                sort_siblings=not args.no_sort,
             )
         )
+        return 0
+
+    if args.command == "tasks" and args.action == "sort":
+        _print_json(await sort_tasks(parent_id=args.parent_id))
         return 0
 
     if args.command == "tasks" and args.action == "delete":
@@ -105,6 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
     create_cmd.add_argument("--note")
     create_cmd.add_argument("--manual-start-date")
     create_cmd.add_argument("--manual-end-date")
+    create_cmd.add_argument("--no-sort", action="store_true", help="Skip auto-sort after creation")
 
     update_cmd = tasks_sub.add_parser("update", help="Update a task")
     update_cmd.add_argument("task_id")
@@ -113,6 +120,10 @@ def build_parser() -> argparse.ArgumentParser:
     update_cmd.add_argument("--completed", type=lambda v: v.lower() in ("1", "true", "yes"))
     update_cmd.add_argument("--manual-start-date")
     update_cmd.add_argument("--manual-end-date")
+    update_cmd.add_argument("--no-sort", action="store_true", help="Skip auto-sort after update")
+
+    sort_cmd = tasks_sub.add_parser("sort", help="Sort children of a parent by start date")
+    sort_cmd.add_argument("--parent-id", help="Parent task ID (omit for root)")
 
     delete_cmd = tasks_sub.add_parser("delete", help="Delete a task")
     delete_cmd.add_argument("task_id")
