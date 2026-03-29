@@ -32,7 +32,7 @@ async def _dispatch(args: argparse.Namespace) -> int:
                 completed=args.completed,
                 due_before=args.due_before,
                 due_after=args.due_after,
-                limit=args.limit,
+
                 detail=args.detail,
             )
         )
@@ -98,7 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--completed", type=lambda v: v.lower() in ("1", "true", "yes"))
     query.add_argument("--due-before")
     query.add_argument("--due-after")
-    query.add_argument("--limit", type=int)
+
     query.add_argument("--detail", choices=["summary", "full"], default="summary")
 
     get_cmd = tasks_sub.add_parser("get", help="Get one task by id")

@@ -89,7 +89,7 @@ async def query_tasks(
     completed: Optional[bool] = None,
     due_before: Optional[str] = None,
     due_after: Optional[str] = None,
-    limit: Optional[int] = None,
+
     detail: Optional[str] = None,
 ) -> str:
     """Query tasks in an OmniPlan document with optional filters.
@@ -100,7 +100,7 @@ async def query_tasks(
         completed: True = completed only, False = incomplete only, None = all.
         due_before: ISO date string (e.g. 2025-12-31). Tasks ending before this date.
         due_after: ISO date string (e.g. 2025-01-01). Tasks ending after this date.
-        limit: Maximum number of tasks to return. Returns all tasks if omitted.
+
         detail: 'summary' (default) returns core fields only; 'full' returns all fields.
     """
     doc_sel = _doc_selector()
@@ -144,7 +144,7 @@ function flatten(task, parentId, parentOutlineId) {{
 var root = _proj.actual.rootTask;
 var allPairs = flatten(root, _rootUID, '');
 var filtered = allPairs.filter(function(p) {{ var t = p.raw; return {filter_expr}; }});
-var sliced = filtered{'' if limit is None else f'.slice(0, {limit})'};
+var sliced = filtered;
 var summary = {json.dumps(detail != 'full')};
 return sliced.map(function(p) {{
   var obj = taskToObj(p.raw, summary);

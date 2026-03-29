@@ -34,7 +34,7 @@ python3 scripts/omniplan_skill.py documents list
 Query tasks:
 
 ```bash
-python3 scripts/omniplan_skill.py tasks query --keyword gantt --detail full --limit 20
+python3 scripts/omniplan_skill.py tasks query --keyword gantt --detail full
 ```
 
 Get one task:
