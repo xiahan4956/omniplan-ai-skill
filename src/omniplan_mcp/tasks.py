@@ -31,6 +31,8 @@ function toSeconds(v) {
   if (v === null || v === undefined) return 0;
   if (typeof v === 'number') return v;
   if (typeof v === 'object') {
+    if (typeof v.workSeconds === 'number') return v.workSeconds;
+    if (typeof v.elapsedSeconds === 'number') return v.elapsedSeconds;
     if (typeof v.seconds === 'number') return v.seconds;
     if (typeof v.value === 'number') return v.value;
   }
@@ -50,6 +52,8 @@ function taskToObj(task, summary) {
 
   var effort = toSeconds(task.effort);
   var effortDone = toSeconds(task.effortDone);
+  var dur = task.duration;
+  var durationDays = (dur && typeof dur === 'object' && typeof dur.workSeconds === 'number') ? Math.round(dur.workSeconds / 28800 * 10) / 10 : 0;
   var completionPct = effort > 0 ? Math.round((effortDone / effort) * 100) : 0;
 
   var obj = {
@@ -69,6 +73,7 @@ function taskToObj(task, summary) {
     obj.completion_pct = completionPct;
     obj.manual_start_date = fmtDate(task.manualStartDate);
     obj.manual_end_date = fmtDate(task.manualEndDate);
+    obj.duration_days = durationDays;
     obj.effort_seconds = effort;
     obj.effort_done_seconds = effortDone;
   }
